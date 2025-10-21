@@ -1,0 +1,9 @@
+@use "../../styles/colors.scss" as *;
+
+.header {
+  color: $contrast-color;
+  padding: 1rem 2rem;
+  text-align: center;
+
+  background-color: $secondary-color;
+}
