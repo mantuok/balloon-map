@@ -1,0 +1,10 @@
+@use "../../styles/colors.scss" as *;
+
+.footer {
+  margin-top: auto;
+  padding: 1rem 2rem;
+  color: $contrast-color;
+  text-align: center;
+
+  background-color: $secondary-color;
+}
