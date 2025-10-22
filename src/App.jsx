@@ -1,6 +1,6 @@
 import Header from "./components/Header/Header";
-import Footer from './components/Footer/Footer';
-import BalloonMap from './components/BalloonMap/BalloonMap';
+import Footer from "./components/Footer/Footer";
+import BalloonMap from "./components/BalloonMap/BalloonMap";
 import "./App.scss";
 
 const App = () => {
@@ -15,6 +15,6 @@ const App = () => {
       <Footer />
     </div>
   );
-}
+};
 
 export default App;
