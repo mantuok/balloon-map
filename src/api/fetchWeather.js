@@ -1,9 +1,9 @@
 import { fetchWeatherApi } from "openmeteo";
 
-const FetchWeather = async (long, lat) => {
+export const fetchWeather = async (lat, lon) => {
   const params = {
     latitude: lat,
-    longitude: long,
+    longitude: lon,
     hourly: "temperature_2m",
   };
 
@@ -27,5 +27,3 @@ const FetchWeather = async (long, lat) => {
 
   return weatherData.hourly;
 };
-
-export default FetchWeather;
