@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
+import { fetchAirPollution } from "../../api/fetchAirPollution";
 
 const CENTER = [37.3382, -121.8863];
 
@@ -22,6 +23,9 @@ const BalloonMap = () => {
     const load = async () => {
       const allBalloons = await fetchBalloons();
       setBalloons(allBalloons);
+      // const pollution = await fetchAirPollution(allBalloons[0].lat, allBalloons[0].lon);
+      const pollution = await fetchAirPollution("37.3382", "-121.8863");
+      console.log(pollution);
     };
     load();
   }, []);
@@ -45,6 +49,7 @@ const BalloonMap = () => {
               <Popup>
                 <strong>ID:</strong> {balloon.id} <br />
                 <strong>Alt:</strong> {balloon.alt.toFixed(2)} km
+                <strong>:</strong> {balloon.alt.toFixed(2)}
               </Popup>
             </Marker>
           ))}
