@@ -11,6 +11,7 @@ const CENTER = [37.3382, -121.8863];
 
 const BalloonMap = () => {
   const [balloons, setBalloons] = useState([]);
+  const [heatMapData, setHeatMapData] = useState([]);
 
   // delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
@@ -20,14 +21,27 @@ const BalloonMap = () => {
   });
 
   useEffect(() => {
-    const load = async () => {
+    const loadBalloons = async () => {
       const allBalloons = await fetchBalloons();
       setBalloons(allBalloons);
-      // const pollution = await fetchAirPollution(allBalloons[0].lat, allBalloons[0].lon);
-      const pollution = await fetchAirPollution("37.3382", "-121.8863");
-      console.log(pollution);
     };
-    load();
+    loadBalloons();
+  }, []);
+
+  useEffect(() => {
+    const loadPollution = async () => {
+      const rawPollutionData = await fetchAirPollution("35.1353", "-106.584702");
+      console.log(rawPollutionData.data);
+      // const pollutionPoints = rawPollutionData.results.flatMap((station) =>
+      //   station.sensors.map((sensor) => [
+      //     station.coordinates.latitude,
+      //     station.coordinates.longitude,
+      //     sensor.value ?? 0,
+      //   ])
+      // );
+      // setHeatMapData(pollutionPoints);
+    };
+    loadPollution();
   }, []);
 
   return (
