@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "/treasure/";
+const BASE_URL = "https://a.windbornesystems.com/treasure/";
 
 export const fetchBalloons = async () => {
   const requests = Array.from({ length: 24 }, (_, i) => {

@@ -6,7 +6,6 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 app.use(cors());
-console.log("API Key:", process.env.OPENAQ_API_KEY);
 
 app.get("/api/air-quality", async (req, res) => {
   const { coordinates, radius = 1000, limit = 10 } = req.query;
@@ -19,7 +18,7 @@ app.get("/api/air-quality", async (req, res) => {
     });
     const locations = locationRes.data.results;
 
-    // console.log("first location:", locations?.[0]);
+    console.log("first location:", locations?.[0]);
 
     const sensorToLocation = new Map();
     const sensorIDs = [];
@@ -89,5 +88,13 @@ app.get("/api/air-quality", async (req, res) => {
     res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
   }
 });
+
+app.get("/api/balloons", async (req, res) => {
+  try { 
+    
+  } catch (error) { 
+
+  }
+
 
 app.listen(3001, () => console.log("Proxy running on port 3001"));
