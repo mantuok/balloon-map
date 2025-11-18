@@ -85,9 +85,10 @@ app.get("/api/balloons", async (req, res) => {
 
 app.get("/api/radiance", async (req, res) => {
   try {
-    const { lat, lon, timestamp } = req;
+    const { lat, lon, timestamp } = req.query;
 
     if (!lat || !lon || !timestamp) {
+      console.log("lat: ", lat, "lon: ", lon, "timestamp: ", timestamp);
       return res.status(400).json({ error: "Missing required parameters" });
     }
 
@@ -100,12 +101,12 @@ app.get("/api/radiance", async (req, res) => {
       return res.json(cached.response);
     }
 
-    const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&latitude=${lat}&longitude=${lon}&start=${date}&end=${date}&format=JSON`;
+    const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&community=AG&latitude=${lat}&longitude=${lon}&start=${date}&end=${date}&format=JSON`;
 
     const r = await axios.get(nasaUrl);
     const data = r.data;
 
-    const value = data.properties.parameters.ALLSKY_SFC_SW_DWN.values[date] ?? null;
+    const value = data.properties.parameter.ALLSKY_SFC_SW_DWN[date] ?? null;
 
     const responsePayload = {
       lat: Number(lat),

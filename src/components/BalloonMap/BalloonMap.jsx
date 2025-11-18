@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchBalloons } from "../../api/fetchBalloons";
+import { fetchRadiance } from "../../api/fetchRadiance";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvent } from "react-leaflet";
 // import MarkerClusterGroup from "react-leaflet-cluster";
@@ -24,7 +25,16 @@ const BalloonMap = () => {
     loadBalloons();
   }, []);
 
-  // const debounceUpdatedPollution = useRef(debounce(updatePollution, 500)).current;
+  useEffect(() => {
+    if (balloons.length > 0 && balloons[0]) {
+      const loadRadiance = async () => {
+        const data = await fetchRadiance(balloons[0].lat, balloons[0].lon, balloons[0].timestamp);
+        console.log("balloon: ", balloons[0]);
+        console.log("radiance: ", data);
+      };
+      loadRadiance();
+    }
+  }, [balloons]);
 
   const MapEvents = () => {
     const map = useMapEvent("moveend", () => {
@@ -33,7 +43,6 @@ const BalloonMap = () => {
         mapBounds.contains([balloon.lat, balloon.lon])
       );
       console.log("visible balloons: ", visibleBalloons);
-      // debounceUpdatedPollution(visibleBalloons);
     });
     return null;
   };
