@@ -2,99 +2,129 @@ import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
 import cors from "cors";
+import { formatDate } from "../src/utils/formatDate.js";
 
 dotenv.config();
 const app = express();
 app.use(cors());
 
-app.get("/api/air-quality", async (req, res) => {
-  const { coordinates, radius = 1000, limit = 10 } = req.query;
+const BALLOONS_URL = "https://a.windbornesystems.com/treasure/";
+let balloonHistoryCache = [];
+let balloonHistoryLoadedAt = null;
+let balloonHistoryLoadingPromise = null;
 
-  try {
-    // Fetching locations
-    const locationRes = await axios.get("https://api.openaq.org/v3/locations", {
-      headers: { "X-API-Key": process.env.OPENAQ_API_KEY },
-      params: { coordinates, radius, limit },
+const radianceCache = new Map();
+const RADIANCE_CACHE_TTL_MS = 60 * 60 * 1000;
+
+async function fetchBalloonHistory() {
+  const requests = Array.from({ length: 24 }, (_, i) => {
+    const filename = i.toString().padStart(2, "0") + ".json";
+    return axios.get(BALLOONS_URL + filename).catch(() => null);
+  });
+
+  const responses = await Promise.all(requests);
+  const history = [];
+
+  responses.forEach((response, i) => {
+    if (!response || !Array.isArray(response.data)) return;
+
+    response.data.forEach((coords, index) => {
+      const [lat, lon, alt] = coords;
+      history.push({
+        id: `${i}-${index}`,
+        lat,
+        lon,
+        alt,
+        timestamp: Date.now() - i * 3600 * 1000,
+      });
     });
-    const locations = locationRes.data.results;
+  });
 
-    console.log("first location:", locations?.[0]);
+  return history;
+}
 
-    const sensorToLocation = new Map();
-    const sensorIDs = [];
+async function loadBalloonHistoryIntoCache() {
+  try {
+    const history = await fetchBalloonHistory();
+    if (history.length) {
+      balloonHistoryCache = history;
+      balloonHistoryLoadedAt = Date.now();
+      console.log("Balloon history cache refreshed, items:", history.length);
+    }
+  } catch (err) {
+    console.error("Failed to refresh balloon history cache:", err);
+  }
+}
 
-    // Mapping locations to sensor id
+balloonHistoryLoadingPromise = loadBalloonHistoryIntoCache().finally(() => {
+  balloonHistoryLoadingPromise = null;
+});
 
-    for (let location of locations) {
-      const sensor = location.sensors?.[0];
-      if (sensor && sensor.id) {
-        sensorToLocation.set(sensor.id, location);
-        sensorIDs.push(sensor.id);
-      }
+setInterval(
+  () => {
+    loadBalloonHistoryIntoCache();
+  },
+  60 * 60 * 1000
+);
+
+app.get("/api/balloons", async (req, res) => {
+  try {
+    if (!balloonHistoryCache.length && balloonHistoryLoadingPromise) {
+      await balloonHistoryLoadingPromise;
     }
 
-    if (!sensorIDs.length) return res.status(404).json({ message: "No sensors found nearby" });
+    if (!balloonHistoryCache.length) {
+      await loadBalloonHistoryIntoCache();
+    }
 
-    // Fetching measurements per sensor
-
-    const measurementPromises = sensorIDs.map(async (id) => {
-      try {
-        const response = await axios.get(
-          `https://api.openaq.org/v3/sensors/${id}/measurements/hourly`,
-          {
-            headers: { "X-API-Key": process.env.OPENAQ_API_KEY },
-            params: { limit: 1 },
-          }
-        );
-        const measurement = response.data.results?.[0]?.value || null;
-        return { sensorId: id, measurement };
-      } catch {
-        return { sensorId: id, measurement: null };
-      }
-    });
-
-    const measurementResults = await Promise.allSettled(measurementPromises);
-
-    // Merging location and measurement
-
-    const enrichedData = measurementResults
-      .map((measurementResponse) => {
-        if (measurementResponse.status !== "fulfilled") {
-          // console.log("response null status ", measurementResponse);
-          return null;
-        }
-
-        const { sensorId, measurement } = measurementResponse.value;
-        if (!measurement) {
-          return null;
-        }
-
-        const location = sensorToLocation.get(sensorId);
-        if (!location) {
-          return null;
-        }
-
-        return {
-          coordinates: location.coordinates,
-          value: measurement,
-        };
-      })
-      .filter(Boolean);
-
-    console.log("enrichedData: ", enrichedData);
-
-    res.json({ count: enrichedData.length, data: enrichedData });
+    res.json(balloonHistoryCache);
   } catch (err) {
     res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
   }
 });
 
-app.get("/api/balloons", async (req, res) => {
-  try { 
-    
-  } catch (error) { 
+app.get("/api/radiance", async (req, res) => {
+  try {
+    const { lat, lon, timestamp } = req;
 
+    if (!lat || !lon || !timestamp) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
+
+    const date = formatDate(timestamp);
+    const cacheKey = `${lat}:${lon}:${date}`;
+    const now = Date.now();
+
+    const cached = radianceCache.get(cacheKey);
+    if (cached && now - cached.cachedAt < RADIANCE_CACHE_TTL_MS) {
+      return res.json(cached.response);
+    }
+
+    const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&latitude=${lat}&longitude=${lon}&start=${date}&end=${date}&format=JSON`;
+
+    const r = await axios.get(nasaUrl);
+    const data = r.data;
+
+    const value = data.properties.parameters.ALLSKY_SFC_SW_DWN.values[date] ?? null;
+
+    const responsePayload = {
+      lat: Number(lat),
+      lon: Number(lon),
+      date,
+      radiance: value,
+      raw: data,
+    };
+
+    radianceCache.set(cacheKey, {
+      response: responsePayload,
+      cachedAt: now,
+    });
+
+    return res.json(responsePayload);
+  } catch (err) {
+    console.error("NASA radiance fetch failed:", err);
+    res.status(err.response?.status || 500).json(err.response?.data || { error: err.message });
   }
-
+});
 
 app.listen(3001, () => console.log("Proxy running on port 3001"));
