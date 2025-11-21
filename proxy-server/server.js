@@ -10,7 +10,6 @@ app.use(cors());
 
 const BALLOONS_URL = "https://a.windbornesystems.com/treasure/";
 let balloonHistoryCache = [];
-let balloonHistoryLoadedAt = null;
 let balloonHistoryLoadingPromise = null;
 
 const radianceCache = new Map();
@@ -35,7 +34,7 @@ async function fetchBalloonHistory() {
         lat,
         lon,
         alt,
-        timestamp: Date.now() - i * 3600 * 1000,
+        timestamp: Date.now() - i * 7 * 24 * 3600 * 1000,
       });
     });
   });
@@ -48,7 +47,6 @@ async function loadBalloonHistoryIntoCache() {
     const history = await fetchBalloonHistory();
     if (history.length) {
       balloonHistoryCache = history;
-      balloonHistoryLoadedAt = Date.now();
       console.log("Balloon history cache refreshed, items:", history.length);
     }
   } catch (err) {
@@ -101,7 +99,8 @@ app.get("/api/radiance", async (req, res) => {
       return res.json(cached.response);
     }
 
-    const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&community=AG&latitude=${lat}&longitude=${lon}&start=${date}&end=${date}&format=JSON`;
+    const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN&community=RE&latitude=${lat}&longitude=${lon}&start=${date}&end=${date}&format=JSON`;
+    console.log("Calling NASA API:", nasaUrl);
 
     const r = await axios.get(nasaUrl);
     const data = r.data;
